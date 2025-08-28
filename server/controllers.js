@@ -37,12 +37,13 @@ async function getReviews(req, res) {
     });
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
 }
 
 async function getMeta(req, res) {
-  const product_id = req.query.product_id;
   try {
+    const product_id = req.query.product_id;
     await db.query('DROP TABLE IF EXISTS product_reviews');
     let queryStr = `SELECT id AS review_id, rating, recommend
     INTO product_reviews
@@ -50,7 +51,7 @@ async function getMeta(req, res) {
     WHERE reported=false
       AND product_id=$1`;
     // get metadata for ratings and recommended
-    await db.query(queryStr), [product_id];
+    await db.query(queryStr, [product_id]);
     queryStr = `SELECT rating, COUNT(review_id)
     FROM product_reviews
     GROUP BY rating
@@ -93,6 +94,7 @@ async function getMeta(req, res) {
     res.json(result);
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
 }
 
@@ -131,6 +133,7 @@ async function postReview(req, res) {
     res.sendStatus(201);
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
 }
 
@@ -145,6 +148,7 @@ async function putReviewHelpful(req, res) {
     res.sendStatus(204);
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
 }
 
@@ -159,6 +163,7 @@ async function putReviewReported(req, res) {
     res.sendStatus(204);
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
 }
 
