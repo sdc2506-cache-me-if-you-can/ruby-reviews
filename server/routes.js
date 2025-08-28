@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
 router.get('/reviews', controllers.getReviews);
 router.get('/reviews/meta', controllers.getMeta);
 router.post('/reviews', controllers.postReview);
-router.put('/reviews/:review_id/helpful', controllers.putHelpfulReview);
-router.put('/reviews/:review_id/report', controllers.putReportedReview);
+router.put('/reviews/:review_id/helpful', controllers.putReviewHelpful);
+router.put('/reviews/:review_id/report', controllers.putReviewReported);
 
 module.exports = router;
