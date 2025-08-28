@@ -26,11 +26,11 @@ CREATE TABLE IF NOT EXISTS reviews (
   summary TEXT,
   body TEXT,
   recommend BOOLEAN,
-  reported BOOLEAN,
+  reported BOOLEAN DEFAULT false,
   reviewer_name TEXT,
   reviewer_email TEXT,
-  response TEXT,
-  helpfulness INT
+  response TEXT DEFAULT null,
+  helpfulness INT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS characteristic_reviews (
