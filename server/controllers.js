@@ -61,9 +61,9 @@ async function getMeta(req, res) {
     INTO product_reviews
     FROM reviews
     WHERE reported=false
-      AND product_id=${product_id}`;
+      AND product_id=$1`;
     // get metadata for ratings and recommended
-    await db.query(queryStr);
+    await db.query(queryStr), [product_id];
     queryStr = `SELECT rating, COUNT(review_id)
     FROM product_reviews
     GROUP BY rating
@@ -81,8 +81,8 @@ async function getMeta(req, res) {
     FROM characteristics
     INNER JOIN characteristic_reviews
     ON characteristics.id=characteristic_reviews.characteristic_id
-    WHERE characteristics.product_id=${product_id}`;
-    await db.query(queryStr);
+    WHERE characteristics.product_id=$1`;
+    await db.query(queryStr, [product_id]);
     queryStr = `SELECT name, characteristic_id AS id, AVG(value) AS value
     FROM product_characteristic_reviews
     GROUP BY characteristic_id, name
