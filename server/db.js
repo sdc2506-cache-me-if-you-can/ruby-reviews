@@ -9,8 +9,6 @@ const pool = new Pool({
   database: process.env.DB_NAME
 });
 
-// psql -U ruby_reviews -d postgres -f server/schema.sql
-
 module.exports = {
   query: (text, params) => pool.query(text, params)
 };
