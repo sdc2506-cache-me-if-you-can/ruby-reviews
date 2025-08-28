@@ -19,7 +19,7 @@ async function getReviews(req, res) {
   // console.log('page', page, 'count', count, 'sort', sort, 'product_id', product_id);
 
   try {
-    let queryStr = `SELECT id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness FROM reviews WHERE reported=false AND product_id=${product_id}`;
+    let queryStr = 'SELECT id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness FROM reviews WHERE reported=false AND product_id=$1';
     if (sort === 'newest') {
       queryStr += ' ORDER BY date DESC';
     } else if (sort === 'helpful') {
@@ -27,14 +27,14 @@ async function getReviews(req, res) {
     } else if (sort === 'relevant' || '') {
       queryStr += ' ORDER BY helpfulness DESC, date DESC';
     }
-    queryStr += ` LIMIT ${count} OFFSET ${count * page}`;
+    queryStr += ` LIMIT $2 OFFSET $3`;
     // reviews as array of objects
-    const result = await db.query(queryStr);
+    const result = await db.query(queryStr, [product_id, count, count * page]);
     //console.log(result);
     // add in photos
     for (const review of result.rows) {
-      queryStr = `SELECT id, url FROM photos WHERE review_id=${review.review_id}`;
-      let photos = await db.query(queryStr);
+      queryStr = 'SELECT id, url FROM photos WHERE review_id=$1';
+      let photos = await db.query(queryStr, [review.review_id]);
       // console.log('photos', photos.rows);
       review.photos = photos.rows || [];
       // could be empty array if no photos found
@@ -72,7 +72,43 @@ async function postReview(req, res) {
     photos,
     characteristics
   */
- // status: 201 CREATED
+  // console.log('body', req.body);
+  const {product_id, rating, summary, body, recommend, name, email, photos, characteristics} = req.body;
+  // add new entry to reviews
+  let queryStr = 'INSERT INTO reviews (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($1, $2, $3, $4, $5, $6, $7)';
+  // console.log(queryStr);
+  await db.query(queryStr, [product_id, rating, summary, body, recommend, name, email]);
+  const newReview = await db.query(`SELECT *
+    FROM reviews
+    ORDER BY id DESC
+    LIMIT 1`);
+  // console.log('added review', newReview.rows);
+
+  // add entries to characteristics_reviews
+  for (const [key, value] of Object.entries(characteristics)) {
+    // console.log('review_id', newReview.rows[0].id);
+    queryStr = 'INSERT INTO characteristic_reviews (characteristic_id, review_id, value) VALUES ($1, $2, $3)';
+    await db.query(queryStr, [key, newReview.rows[0].id, value]);
+    // let char = await db.query(`SELECT *
+    // FROM characteristic_reviews
+    // ORDER BY id DESC
+    // LIMIT 1`);
+    // console.log('added char', char.rows[0]);
+  }
+
+  // add entries to photos
+  for (const photoURL of photos) {
+    queryStr = 'INSERT INTO photos (review_id, url) VALUES ($1, $2)';
+    await db.query(queryStr, [newReview.rows[0].id, photoURL]);
+    // let photo = await db.query(`SELECT *
+    // FROM photos
+    // ORDER BY id DESC
+    // LIMIT 1`);
+    // console.log('added photo', photo.rows[0]);
+  }
+  // send status back
+  // status: 201 CREATED
+  res.sendStatus(201);
 }
 
 async function putHelpfulReview(req, res) {
