@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 CREATE TABLE IF NOT EXISTS characteristics (
-  id SERIAL PRIMARY KEY,
+  id INT PRIMARY KEY,
   product_id INT REFERENCES products(id),
   name TEXT
 );
@@ -22,15 +22,15 @@ CREATE TABLE IF NOT EXISTS reviews (
   id SERIAL PRIMARY KEY,
   product_id INT REFERENCES products(id),
   rating INT,
-  date TIMESTAMP,
+  date TIMESTAMP DEFAULT NOW(),
   summary TEXT,
   body TEXT,
   recommend BOOLEAN,
-  reported BOOLEAN,
+  reported BOOLEAN DEFAULT false,
   reviewer_name TEXT,
   reviewer_email TEXT,
-  response TEXT,
-  helpfulness INT
+  response TEXT DEFAULT null,
+  helpfulness INT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS characteristic_reviews (
@@ -57,7 +57,7 @@ COPY characteristics
   DELIMITER ',';
 
 CREATE TABLE IF NOT EXISTS raw_reviews (
-  	id SERIAL PRIMARY KEY,
+  	id INT PRIMARY KEY,
     product_id INT REFERENCES products(id),
     rating INT,
     date BIGINT,
@@ -89,3 +89,18 @@ COPY photos
 	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/reviews_photos.csv'
   CSV HEADER
   DELIMITER ',';
+
+SELECT setval('reviews_id_seq'::regclass, (SELECT id
+FROM reviews
+ORDER BY id DESC
+LIMIT 1));
+
+SELECT setval('characteristic_reviews_id_seq'::regclass, (SELECT id
+FROM characteristic_reviews
+ORDER BY id DESC
+LIMIT 1));
+
+SELECT setval('photos_id_seq'::regclass, (SELECT id
+FROM photos
+ORDER BY id DESC
+LIMIT 1));
