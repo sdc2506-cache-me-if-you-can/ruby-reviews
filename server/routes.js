@@ -1,4 +1,4 @@
-const controllers = require('./controllers.js');
+const controllers = require('./controllers');
 const router = require('express').Router();
 
 router.get('/', async (req, res) => {
