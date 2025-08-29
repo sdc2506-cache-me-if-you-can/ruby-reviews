@@ -1,23 +1,17 @@
 const db = require('./db');
+const helpers = require('./helpers');
 
 async function getReviews(req, res) {
-  // query params:
-  /*
-    page: integer (default 1),
-    count: integer (default 5),
-    sort: text ("newest", "helpful", "relevant"),
-    product_id: integer, required
-  */
-  let page = req.query.page || 0;
-  // default first page will translate into 0 offset
-  if (page == 1) {
-    page = 0;
-  }
-  const count = req.query.count || 5;
-  const sort = req.query.sort || "";
-  const product_id = req.query.product_id;
-
   try {
+    let page = req.query.page || 0;
+    // default first page will translate into 0 offset
+    if (page == 1) {
+      page = 0;
+    }
+    const count = req.query.count || 5;
+    const sort = req.query.sort || "";
+    const product_id = req.query.product_id;
+
     let queryStr = 'SELECT id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness FROM reviews WHERE reported=false AND product_id=$1';
     if (sort === 'newest') {
       queryStr += ' ORDER BY date DESC';
@@ -27,14 +21,11 @@ async function getReviews(req, res) {
       queryStr += ' ORDER BY helpfulness DESC, date DESC';
     }
     queryStr += ` LIMIT $2 OFFSET $3`;
-    // reviews as array of objects
     const result = await db.query(queryStr, [product_id, count, count * page]);
-    //console.log(result);
     // add in photos
     for (const review of result.rows) {
       queryStr = 'SELECT id, url FROM photos WHERE review_id=$1';
       let photos = await db.query(queryStr, [review.review_id]);
-      // console.log('photos', photos.rows);
       review.photos = photos.rows || [];
       // could be empty array if no photos found
     }
@@ -46,58 +37,28 @@ async function getReviews(req, res) {
     });
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
-  // status: 200 OK
 }
 
 async function getMeta(req, res) {
-  // query params:
-  // product_id: integer, required
-  // status: 200 OK
-  const product_id = req.query.product_id;
   try {
-    await db.query('DROP TABLE IF EXISTS product_reviews');
-    let queryStr = `SELECT id AS review_id, rating, recommend
-    INTO product_reviews
-    FROM reviews
-    WHERE reported=false
-      AND product_id=$1`;
-    // get metadata for ratings and recommended
-    await db.query(queryStr), [product_id];
-    queryStr = `SELECT rating, COUNT(review_id)
-    FROM product_reviews
-    GROUP BY rating
-    ORDER BY rating`;
-    const ratings = await db.query(queryStr);
-    queryStr = `SELECT recommend::int, COUNT(review_id)
-    FROM product_reviews
-    GROUP BY recommend
-    ORDER BY recommend`;
-    const recommended = await db.query(queryStr);
-    // get metadata for characteristics
-    await db.query('DROP TABLE IF EXISTS product_characteristic_reviews');
-    queryStr = `SELECT characteristics.id, characteristics.product_id, characteristics.name, characteristic_reviews.characteristic_id, characteristic_reviews.value, characteristic_reviews.review_id
-    INTO product_characteristic_reviews
-    FROM characteristics
-    INNER JOIN characteristic_reviews
-    ON characteristics.id=characteristic_reviews.characteristic_id
-    WHERE characteristics.product_id=$1`;
-    await db.query(queryStr, [product_id]);
-    queryStr = `SELECT name, characteristic_id AS id, AVG(value) AS value
-    FROM product_characteristic_reviews
-    GROUP BY characteristic_id, name
-    ORDER BY characteristic_id`;
-    const characteristics = await db.query(queryStr);
-    let result = { product_id: product_id, ratings: {}, recommended: {}, characteristics: {} };
+    const product_id = req.query.product_id;
+    // calculate metadata
+    await helpers.makeMetaTable(product_id);
+    const ratings = await helpers.getRatingsMeta();
+    const recommended = await helpers.getRecommendedMeta();
+    const characteristics = await helpers.getCharacteristicsMeta(product_id);
 
-    // structure
-    for (const row of ratings.rows) {
+    // build json
+    let result = { product_id: product_id, ratings: {}, recommended: {}, characteristics: {} };
+    for (const row of ratings) {
       result.ratings[row.rating] = row.count;
     }
-    for (const row of recommended.rows) {
+    for (const row of recommended) {
       result.recommended[row.recommend] = row.count;
     }
-    for (const row of characteristics.rows) {
+    for (const row of characteristics) {
       result.characteristics[row.name] = {
         id: row.id,
         value: row.value
@@ -106,78 +67,64 @@ async function getMeta(req, res) {
     res.json(result);
   } catch (err) {
     console.error(err);
+    res.sendStatus(404);
   }
-  // res.send('/reviews/meta');
 }
 
 async function postReview(req, res) {
-  // body params: (raw json)
-  /*
-    product_id,
-    rating,
-    summary,
-    body,
-    recommend,
-    name,
-    email,
-    photos,
-    characteristics
-  */
-  // console.log('body', req.body);
-  const {product_id, rating, summary, body, recommend, name, email, photos, characteristics} = req.body;
-  // add new entry to reviews
-  let queryStr = 'INSERT INTO reviews (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($1, $2, $3, $4, $5, $6, $7)';
-  // console.log(queryStr);
-  await db.query(queryStr, [product_id, rating, summary, body, recommend, name, email]);
-  const newReview = await db.query(`SELECT *
-    FROM reviews
-    ORDER BY id DESC
-    LIMIT 1`);
-  // console.log('added review', newReview.rows);
+  try {
+    const {product_id, rating, summary, body, recommend, name, email, photos, characteristics} = req.body;
 
-  // add entries to characteristics_reviews
-  for (const [key, value] of Object.entries(characteristics)) {
-    // console.log('review_id', newReview.rows[0].id);
-    queryStr = 'INSERT INTO characteristic_reviews (characteristic_id, review_id, value) VALUES ($1, $2, $3)';
-    await db.query(queryStr, [key, newReview.rows[0].id, value]);
-    // let char = await db.query(`SELECT *
-    // FROM characteristic_reviews
-    // ORDER BY id DESC
-    // LIMIT 1`);
-    // console.log('added char', char.rows[0]);
+    // add new entry to reviews
+    let queryStr = 'INSERT INTO reviews (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($1, $2, $3, $4, $5, $6, $7)';
+    await db.query(queryStr, [product_id, rating, summary, body, recommend, name, email]);
+    const newReview = await db.query(`SELECT *
+      FROM reviews
+      ORDER BY id DESC
+      LIMIT 1`);
+    // add entries to characteristics_reviews
+    for (const [key, value] of Object.entries(characteristics)) {
+      queryStr = 'INSERT INTO characteristic_reviews (characteristic_id, review_id, value) VALUES ($1, $2, $3)';
+      await db.query(queryStr, [key, newReview.rows[0].id, value]);
+    }
+    // add entries to photos
+    for (const photoURL of photos) {
+      queryStr = 'INSERT INTO photos (review_id, url) VALUES ($1, $2)';
+      await db.query(queryStr, [newReview.rows[0].id, photoURL]);
+    }
+    res.sendStatus(201);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
   }
-
-  // add entries to photos
-  for (const photoURL of photos) {
-    queryStr = 'INSERT INTO photos (review_id, url) VALUES ($1, $2)';
-    await db.query(queryStr, [newReview.rows[0].id, photoURL]);
-    // let photo = await db.query(`SELECT *
-    // FROM photos
-    // ORDER BY id DESC
-    // LIMIT 1`);
-    // console.log('added photo', photo.rows[0]);
-  }
-  // send status back
-  // status: 201 CREATED
-  res.sendStatus(201);
 }
 
-async function putHelpfulReview(req, res) {
-  // params:
-  // review_id: integer, required
-  // status: 204 NO CONTENT
+async function putReviewHelpful(req, res) {
+  try {
+    let queryStr = 'UPDATE reviews SET helpfulness = helpfulness + 1 WHERE id = $1';
+    await db.query(queryStr, [req.params.review_id]);
+    res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+  }
 }
 
-async function putReportedReview(req, res) {
-  // params:
-  // review_id: integer, required
-  // status: 204 NO CONTENT
+async function putReviewReported(req, res) {
+  try {
+    let queryStr = 'UPDATE reviews SET reported = true WHERE id = $1';
+    await db.query(queryStr, [req.params.review_id]);
+    res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(404);
+  }
 }
 
 module.exports = {
   getReviews,
   getMeta,
   postReview,
-  putHelpfulReview,
-  putReportedReview,
+  putReviewHelpful,
+  putReviewReported,
 };
