@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS reviews (
   helpfulness INT DEFAULT 0
 );
 
+CREATE INDEX idx_reviews_date ON reviews(date);
+CREATE INDEX idx_reviews_helpfulness ON reviews(helpfulness);
+CREATE INDEX idx_active_reviews ON reviews(reported, product_id);
+
 CREATE TABLE IF NOT EXISTS characteristic_reviews (
     id SERIAL PRIMARY KEY,
     characteristic_id INT REFERENCES characteristics(id),

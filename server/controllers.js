@@ -12,28 +12,36 @@ async function getReviews(req, res) {
     const sort = req.query.sort || "";
     const product_id = req.query.product_id;
 
-    let queryStr = 'SELECT id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness FROM reviews WHERE reported=false AND product_id=$1';
+    let order_by = '';
     if (sort === 'newest') {
-      queryStr += ' ORDER BY date DESC';
+      console.log('newest');
+      order_by = 'date DESC';
     } else if (sort === 'helpful') {
-      queryStr += ' ORDER BY helpfulness DESC';
-    } else if (sort === 'relevant' || '') {
-      queryStr += ' ORDER BY helpfulness DESC, date DESC';
+      console.log('helpful');
+      order_by = 'helpfulness DESC';
+    } else {
+      order_by = 'helpfulness DESC, date DESC';
     }
-    queryStr += ` LIMIT $2 OFFSET $3`;
+    let queryStr = `SELECT reviews.id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness,json_agg(json_build_object('id', photos.id, 'url', photos.url))
+        FILTER (WHERE photos.id IS NOT NULL) AS photos
+    FROM reviews
+    LEFT JOIN photos ON photos.review_id = reviews.id
+    WHERE reported=false AND product_id=$1
+    GROUP BY reviews.id
+    ORDER BY ${order_by} LIMIT $2 OFFSET $3`;
     const result = await db.query(queryStr, [product_id, count, count * page]);
-    // add in photos
-    for (const review of result.rows) {
-      queryStr = 'SELECT id, url FROM photos WHERE review_id=$1';
-      let photos = await db.query(queryStr, [review.review_id]);
-      review.photos = photos.rows || [];
-      // could be empty array if no photos found
-    }
+
     res.json({
       product: product_id,
       page: page,
       count: count,
-      results: result.rows
+      // results: result.rows
+      results: result.rows.map((row) => {
+        if (!row.photos) {
+          row.photos = [];
+        }
+        return row;
+      })
     });
   } catch (err) {
     console.error(err);

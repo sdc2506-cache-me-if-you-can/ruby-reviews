@@ -8,6 +8,8 @@ async function makeMetaTable(product_id) {
   WHERE reported=false
     AND product_id=$1`;
   await db.query(queryStr, [product_id]);
+  await db.query('CREATE INDEX idx_product_reviews_rating ON product_reviews(rating)');
+  await db.query('CREATE INDEX idx_product_reviews_recommend ON product_reviews(recommend)');
 }
 
 async function getRatingsMeta() {
@@ -41,6 +43,7 @@ async function getCharacteristicsMeta(product_id) {
     ON characteristics.id=characteristic_reviews.characteristic_id
     WHERE characteristics.product_id=$1`;
     await db.query(queryStr, [product_id]);
+    await db.query('CREATE INDEX idx_product_characteristic_reviews_characteristic_name ON product_characteristic_reviews(name)');
     queryStr = `SELECT name, characteristic_id AS id, AVG(value) AS value
     FROM product_characteristic_reviews
     GROUP BY characteristic_id, name
