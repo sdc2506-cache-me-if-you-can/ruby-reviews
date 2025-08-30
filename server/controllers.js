@@ -14,10 +14,8 @@ async function getReviews(req, res) {
 
     let order_by = '';
     if (sort === 'newest') {
-      console.log('newest');
       order_by = 'date DESC';
     } else if (sort === 'helpful') {
-      console.log('helpful');
       order_by = 'helpfulness DESC';
     } else {
       order_by = 'helpfulness DESC, date DESC';
