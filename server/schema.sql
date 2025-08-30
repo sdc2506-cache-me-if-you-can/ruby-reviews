@@ -30,24 +30,25 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewer_name TEXT,
   reviewer_email TEXT,
   response TEXT DEFAULT null,
-  helpfulness INT DEFAULT 0
+  helpfulness INT DEFAULT 0,
+  photos JSONB DEFAULT '[]'::jsonb
 );
 
 CREATE INDEX idx_reviews_date ON reviews(date);
 CREATE INDEX idx_reviews_helpfulness ON reviews(helpfulness);
 CREATE INDEX idx_active_reviews ON reviews(reported, product_id);
 
+CREATE TABLE IF NOT EXISTS photos (
+    id SERIAL PRIMARY KEY,
+    review_id INT REFERENCES reviews(id),
+    url TEXT
+);
+
 CREATE TABLE IF NOT EXISTS characteristic_reviews (
     id SERIAL PRIMARY KEY,
     characteristic_id INT REFERENCES characteristics(id),
     review_id INT REFERENCES reviews(id),
     value INT
-);
-
-CREATE TABLE IF NOT EXISTS photos (
-    id SERIAL PRIMARY KEY,
-    review_id INT REFERENCES reviews(id),
-    url TEXT
 );
 
 COPY products
@@ -84,13 +85,13 @@ INSERT INTO reviews (id, rating, summary, recommend, response, body, date, revie
 SELECT id, rating, summary, recommend, response, body, TO_TIMESTAMP(date / 1000), reviewer_name, reviewer_email, helpfulness, reported, product_id
 FROM raw_reviews;
 
-COPY characteristic_reviews
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/characteristic_reviews.csv'
+COPY photos
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/reviews_photos.csv'
   CSV HEADER
   DELIMITER ',';
 
-COPY photos
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/reviews_photos.csv'
+COPY characteristic_reviews
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/characteristic_reviews.csv'
   CSV HEADER
   DELIMITER ',';
 
@@ -108,3 +109,82 @@ SELECT setval('photos_id_seq'::regclass, (SELECT id
 FROM photos
 ORDER BY id DESC
 LIMIT 1));
+
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id < 1000000;
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id >= 1000000 AND reviews.id < 2000000;
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id >= 2000000 AND reviews.id < 3000000;
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id >= 3000000 AND reviews.id < 4000000;
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id >= 4000000 AND reviews.id < 5000000;
+UPDATE reviews
+SET photos = (
+  json_agg
+)
+FROM (
+  SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL),
+  	reviews.id
+  FROM reviews
+  LEFT JOIN photos
+  ON photos.review_id = reviews.id
+  GROUP BY reviews.id
+) AS subquery
+WHERE subquery.id = reviews.id AND reviews.id >= 5000000;

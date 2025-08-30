@@ -20,12 +20,9 @@ async function getReviews(req, res) {
     } else {
       order_by = 'helpfulness DESC, date DESC';
     }
-    let queryStr = `SELECT reviews.id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness,json_agg(json_build_object('id', photos.id, 'url', photos.url))
-        FILTER (WHERE photos.id IS NOT NULL) AS photos
+    let queryStr = `SELECT reviews.id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness, photos
     FROM reviews
-    LEFT JOIN photos ON photos.review_id = reviews.id
-    WHERE reported=false AND product_id=$1
-    GROUP BY reviews.id
+    WHERE product_id=$1
     ORDER BY ${order_by} LIMIT $2 OFFSET $3`;
     const result = await db.query(queryStr, [product_id, count, count * page]);
 
@@ -98,6 +95,22 @@ async function postReview(req, res) {
       queryStr = 'INSERT INTO photos (review_id, url) VALUES ($1, $2)';
       await db.query(queryStr, [newReview.rows[0].id, photoURL]);
     }
+
+    // add photos to new review (can be async)
+    queryStr = `
+    UPDATE reviews
+    SET photos = (
+      json_agg
+    )
+    FROM (
+      SELECT json_agg(json_build_object('id', photos.id, 'url', photos.url)) FILTER (WHERE photos.id IS NOT NULL)
+      FROM photos
+      WHERE review_id=$1
+    )
+    WHERE id=$1
+    `;
+    db.query(queryStr, [newReview.rows[0].id]);
+
     res.sendStatus(201);
   } catch (err) {
     console.error(err);

@@ -18,7 +18,7 @@ Current dependencies are:
 To perform the ETL process, you will need the applicable csv files.
 1) Download the csv files.
 2) Replace the file paths in `schema.sql` with your own paths.
-3) Run `psql -U [DB_NAME] -d postgres -f server/schema.sql`. You may be asked to enter a password. This process may take a couple minutes.
+3) Run `psql -U [USER] -d postgres -f server/schema.sql`. You may be asked to enter a password. This process may take a couple minutes.
 
 ## Start
 Start the service by running `npm start`
