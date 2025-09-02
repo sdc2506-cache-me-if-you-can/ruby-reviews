@@ -47,26 +47,30 @@ async function getReviews(req, res) {
 async function getMeta(req, res) {
   try {
     const product_id = req.query.product_id;
-    // calculate metadata
-    await helpers.makeMetaTable(product_id);
-    const ratings = await helpers.getRatingsMeta();
-    const recommended = await helpers.getRecommendedMeta();
-    const characteristics = await helpers.getCharacteristicsMeta(product_id);
 
     // build json
     let result = { product_id: product_id, ratings: {}, recommended: {}, characteristics: {} };
-    for (const row of ratings) {
-      result.ratings[row.rating] = row.count;
-    }
-    for (const row of recommended) {
-      result.recommended[row.recommend] = row.count;
-    }
-    for (const row of characteristics) {
-      result.characteristics[row.name] = {
-        id: row.id,
-        value: row.value
-      };
-    }
+    let queryStr = 'SELECT * FROM product_metareviews WHERE product_id=$1';
+    const meta = await db.query(queryStr, [product_id]);
+    // ratings
+    let ratings = {};
+    ratings[1] = meta.rows[0].one_count;
+    ratings[2] = meta.rows[0].two_count;
+    ratings[3] = meta.rows[0].three_count;
+    ratings[4] = meta.rows[0].four_count;
+    ratings[5] = meta.rows[0].five_count;
+    result.ratings = ratings;
+    // recommended
+    let recommended = {};
+    recommended[0] = meta.rows[0].no_recommend_count;
+    recommended[1] = meta.rows[0].recommend_count;
+    result.recommended = recommended;
+    let characteristics = {};
+    // characteristics
+    meta.rows[0].characteristics.forEach((characteristic) => {
+      characteristics[characteristic.name] = {id: characteristic.id, value: characteristic.value};
+    });
+    result.characteristics = characteristics;
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -109,8 +113,8 @@ async function postReview(req, res) {
     )
     WHERE id=$1
     `;
-    db.query(queryStr, [newReview.rows[0].id]);
-
+    await db.query(queryStr, [newReview.rows[0].id]);
+    helpers.calculateMeta(product_id);
     res.sendStatus(201);
   } catch (err) {
     console.error(err);

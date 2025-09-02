@@ -51,6 +51,19 @@ CREATE TABLE IF NOT EXISTS characteristic_reviews (
     value INT
 );
 
+CREATE TABLE IF NOT EXISTS product_metareviews (
+  id SERIAL PRIMARY KEY,
+  product_id INT REFERENCES products(id),
+  one_count INT DEFAULT 0,
+  two_count INT DEFAULT 0,
+  three_count INT DEFAULT 0,
+  four_count INT DEFAULT 0,
+  five_count INT DEFAULT 0,
+  recommend_count INT DEFAULT 0,
+  no_recommend_count INT DEFAULT 0,
+  characteristics JSONB DEFAULT '[]'::jsonb
+);
+
 COPY products
 	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/product.csv'
   CSV HEADER
@@ -109,6 +122,36 @@ SELECT setval('photos_id_seq'::regclass, (SELECT id
 FROM photos
 ORDER BY id DESC
 LIMIT 1));
+
+INSERT INTO product_metareviews
+(product_id, characteristics)
+(
+  SELECT product_id, json_agg(json_build_object('name', name, 'id', id, 'value', avg)) as characteristics
+  FROM (SELECT p.id AS product_id, c.name, c.id, AVG(cr.value)
+        FROM characteristics c
+        JOIN products p ON p.id = c.product_id
+        LEFT JOIN characteristic_reviews cr ON cr.characteristic_id = c.id
+        GROUP BY p.id, c.id, c.name) as subquery
+  GROUP BY subquery.product_id
+  ORDER BY subquery.product_id ASC
+);
+
+UPDATE product_metareviews
+SET one_count = counts.one_count, two_count = counts.two_count, three_count = counts.three_count, four_count = counts.four_count, five_count = counts.five_count, recommend_count = counts.recommend_count, no_recommend_count = counts.no_recommend_count
+FROM
+(
+  SELECT product_id,
+  COUNT(CASE WHEN rating = 1 THEN 1 END) as one_count,
+  COUNT(CASE WHEN rating = 2 THEN 1 END) as two_count,
+  COUNT(CASE WHEN rating = 3 THEN 1 END) as three_count,
+  COUNT(CASE WHEN rating = 4 THEN 1 END) as four_count,
+  COUNT(CASE WHEN rating = 5 THEN 1 END) as five_count,
+  COUNT(CASE WHEN recommend = true THEN 1 END) as recommend_count,
+  COUNT(CASE WHEN recommend = false THEN 1 END) as no_recommend_count
+  FROM reviews
+  GROUP BY product_id
+) AS counts
+WHERE counts.product_id = product_metareviews.product_id;
 
 UPDATE reviews
 SET photos = (

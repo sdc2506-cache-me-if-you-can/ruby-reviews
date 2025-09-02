@@ -1,60 +1,45 @@
 const db = require('./db');
 
-async function makeMetaTable(product_id) {
-  await db.query('DROP TABLE IF EXISTS product_reviews');
-  let queryStr = `SELECT id AS review_id, rating, recommend
-  INTO product_reviews
-  FROM reviews
-  WHERE reported=false
-    AND product_id=$1`;
-  await db.query(queryStr, [product_id]);
-  await db.query('CREATE INDEX idx_product_reviews_rating ON product_reviews(rating)');
-  await db.query('CREATE INDEX idx_product_reviews_recommend ON product_reviews(recommend)');
-}
-
-async function getRatingsMeta() {
-    // assuming product_reviews exists
-    let queryStr = `
-      SELECT rating, COUNT(review_id)
-      FROM product_reviews
-      GROUP BY rating
-      ORDER BY rating`;
-    const ratings = await db.query(queryStr);
-    return ratings.rows;
-}
-
-async function getRecommendedMeta() {
-  // assuming product_reviews exists
+async function calculateMeta(product_id) {
+  let queryStr = `
+    UPDATE product_metareviews
+    SET characteristics = chars.characteristics
+    FROM
+    (
+      SELECT product_id, json_agg(json_build_object('name', name, 'id', id, 'value', avg)) as characteristics
+      FROM (SELECT p.id AS product_id, c.name, c.id, AVG(cr.value)
+            FROM characteristics c
+            JOIN products p ON p.id = c.product_id
+            LEFT JOIN characteristic_reviews cr ON cr.characteristic_id = c.id
+            WHERE p.id = $1
+            GROUP BY p.id, c.id, c.name) as subquery
+      GROUP BY subquery.product_id
+      ORDER BY subquery.product_id ASC
+    ) AS chars
+  `;
+  db.query(queryStr, [product_id]);
   queryStr = `
-    SELECT recommend::int, COUNT(review_id)
-    FROM product_reviews
-    GROUP BY recommend
-    ORDER BY recommend`;
-  const recommended = await db.query(queryStr);
-  return recommended.rows;
-}
-
-async function getCharacteristicsMeta(product_id) {
-    await db.query('DROP TABLE IF EXISTS product_characteristic_reviews');
-    queryStr = `SELECT characteristics.id, characteristics.product_id, characteristics.name, characteristic_reviews.characteristic_id, characteristic_reviews.value, characteristic_reviews.review_id
-    INTO product_characteristic_reviews
-    FROM characteristics
-    INNER JOIN characteristic_reviews
-    ON characteristics.id=characteristic_reviews.characteristic_id
-    WHERE characteristics.product_id=$1`;
-    await db.query(queryStr, [product_id]);
-    await db.query('CREATE INDEX idx_product_characteristic_reviews_characteristic_name ON product_characteristic_reviews(name)');
-    queryStr = `SELECT name, characteristic_id AS id, AVG(value) AS value
-    FROM product_characteristic_reviews
-    GROUP BY characteristic_id, name
-    ORDER BY characteristic_id`;
-    const characteristics = await db.query(queryStr);
-    return characteristics.rows;
+    UPDATE product_metareviews
+    SET one_count = counts.one_count, two_count = counts.two_count, three_count = counts.three_count, four_count = counts.four_count, five_count = counts.five_count, recommend_count = counts.recommend_count, no_recommend_count = counts.no_recommend_count
+    FROM
+    (
+      SELECT product_id,
+      COUNT(CASE WHEN rating = 1 THEN 1 END) as one_count,
+      COUNT(CASE WHEN rating = 2 THEN 1 END) as two_count,
+      COUNT(CASE WHEN rating = 3 THEN 1 END) as three_count,
+      COUNT(CASE WHEN rating = 4 THEN 1 END) as four_count,
+      COUNT(CASE WHEN rating = 5 THEN 1 END) as five_count,
+      COUNT(CASE WHEN recommend = true THEN 1 END) as recommend_count,
+      COUNT(CASE WHEN recommend = false THEN 1 END) as no_recommend_count
+      FROM reviews
+      WHERE product_id=$1
+      GROUP BY product_id
+    ) AS counts
+    WHERE counts.product_id = product_metareviews.product_id
+  `;
+  db.query(queryStr, [product_id]);
 }
 
 module.exports = {
-  makeMetaTable,
-  getRatingsMeta,
-  getRecommendedMeta,
-  getCharacteristicsMeta
-} ;
+  calculateMeta
+};
