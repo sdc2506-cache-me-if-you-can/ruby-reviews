@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS product_metareviews (
   characteristics JSONB DEFAULT '[]'::jsonb
 );
 
+CREATE INDEX idx_reviews_product_id ON product_metareviews(product_id);
+
 COPY products
 	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/product.csv'
   CSV HEADER

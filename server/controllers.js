@@ -22,7 +22,7 @@ async function getReviews(req, res) {
     }
     let queryStr = `SELECT reviews.id AS review_id, rating, date, summary, body, recommend, reviewer_name, response, helpfulness, photos
     FROM reviews
-    WHERE product_id=$1
+    WHERE product_id=$1 AND reported = false
     ORDER BY ${order_by} LIMIT $2 OFFSET $3`;
     const result = await db.query(queryStr, [product_id, count, count * page]);
 
@@ -100,7 +100,7 @@ async function postReview(req, res) {
       await db.query(queryStr, [newReview.rows[0].id, photoURL]);
     }
 
-    // add photos to new review (can be async)
+    // add photos to new review
     queryStr = `
     UPDATE reviews
     SET photos = (
