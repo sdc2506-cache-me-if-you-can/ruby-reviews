@@ -1,98 +1,17 @@
-DROP DATABASE IF EXISTS reviewsdb;
-CREATE DATABASE reviewsdb;
-
 \c reviewsdb
 
-CREATE TABLE IF NOT EXISTS products (
-  id INT PRIMARY KEY,
-  name TEXT,
-  slogan TEXT,
-  description TEXT,
-  category TEXT,
-  default_price INT
-);
-
-CREATE TABLE IF NOT EXISTS characteristics (
-  id INT PRIMARY KEY,
-  product_id INT REFERENCES products(id),
-  name TEXT
-);
-
-CREATE TABLE IF NOT EXISTS reviews (
-  id SERIAL PRIMARY KEY,
-  product_id INT REFERENCES products(id),
-  rating INT,
-  date TIMESTAMP DEFAULT NOW(),
-  summary TEXT,
-  body TEXT,
-  recommend BOOLEAN,
-  reported BOOLEAN DEFAULT false,
-  reviewer_name TEXT,
-  reviewer_email TEXT,
-  response TEXT DEFAULT null,
-  helpfulness INT DEFAULT 0,
-  photos JSONB DEFAULT '[]'::jsonb
-);
-
-CREATE INDEX idx_reviews_date ON reviews(date);
-CREATE INDEX idx_reviews_helpfulness ON reviews(helpfulness);
-CREATE INDEX idx_active_reviews ON reviews(reported, product_id);
-
-CREATE TABLE IF NOT EXISTS photos (
-    id SERIAL PRIMARY KEY,
-    review_id INT REFERENCES reviews(id),
-    url TEXT
-);
-
-CREATE TABLE IF NOT EXISTS characteristic_reviews (
-    id SERIAL PRIMARY KEY,
-    characteristic_id INT REFERENCES characteristics(id),
-    review_id INT REFERENCES reviews(id),
-    value INT
-);
-
-CREATE TABLE IF NOT EXISTS product_metareviews (
-  id SERIAL PRIMARY KEY,
-  product_id INT REFERENCES products(id),
-  one_count INT DEFAULT 0,
-  two_count INT DEFAULT 0,
-  three_count INT DEFAULT 0,
-  four_count INT DEFAULT 0,
-  five_count INT DEFAULT 0,
-  recommend_count INT DEFAULT 0,
-  no_recommend_count INT DEFAULT 0,
-  characteristics JSONB DEFAULT '[]'::jsonb
-);
-
-CREATE INDEX idx_reviews_product_id ON product_metareviews(product_id);
-
 COPY products
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/product.csv'
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/data/csv/product.csv'
   CSV HEADER
   DELIMITER ',';
 
 COPY characteristics
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/characteristics.csv'
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/data/csv/characteristics.csv'
   CSV HEADER
   DELIMITER ',';
 
-CREATE TABLE IF NOT EXISTS raw_reviews (
-  	id INT PRIMARY KEY,
-    product_id INT REFERENCES products(id),
-    rating INT,
-    date BIGINT,
-    summary TEXT,
-    body TEXT,
-    recommend BOOLEAN,
-    reported BOOLEAN,
-    reviewer_name TEXT,
-    reviewer_email TEXT,
-    response TEXT,
-    helpfulness INT
-);
-
 COPY raw_reviews
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/reviews.csv'
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/data/csv/reviews.csv'
   CSV HEADER
   DELIMITER ',';
 
@@ -101,12 +20,12 @@ SELECT id, rating, summary, recommend, response, body, TO_TIMESTAMP(date / 1000)
 FROM raw_reviews;
 
 COPY photos
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/reviews_photos.csv'
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/data/csv/reviews_photos.csv'
   CSV HEADER
   DELIMITER ',';
 
 COPY characteristic_reviews
-	FROM '/Users/ruby/Code/RFP/ruby-reviews/src/characteristic_reviews.csv'
+	FROM '/Users/ruby/Code/RFP/ruby-reviews/data/csv/characteristic_reviews.csv'
   CSV HEADER
   DELIMITER ',';
 
