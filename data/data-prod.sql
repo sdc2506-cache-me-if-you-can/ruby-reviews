@@ -1,17 +1,17 @@
 \c reviewsdb
 
 COPY products
-	FROM '/home/ubuntu/ruby-reviews/data/csv/product.csv'
+	FROM '/tmp/product.csv'
   CSV HEADER
   DELIMITER ',';
 
 COPY characteristics
-	FROM '/home/ubuntu/ruby-reviews/data/csv/characteristics.csv'
+	FROM '/tmp/characteristics.csv'
   CSV HEADER
   DELIMITER ',';
 
 COPY raw_reviews
-	FROM '/home/ubuntu/ruby-reviews/data/csv/reviews.csv'
+	FROM '/tmp/reviews.csv'
   CSV HEADER
   DELIMITER ',';
 
@@ -20,12 +20,12 @@ SELECT id, rating, summary, recommend, response, body, TO_TIMESTAMP(date / 1000)
 FROM raw_reviews;
 
 COPY photos
-	FROM '/home/ubuntu/ruby-reviews/data/csv/reviews_photos.csv'
+	FROM '/tmp/reviews_photos.csv'
   CSV HEADER
   DELIMITER ',';
 
 COPY characteristic_reviews
-	FROM '/home/ubuntu/ruby-reviews/data/csv/characteristic_reviews.csv'
+	FROM '/tmp/characteristic_reviews.csv'
   CSV HEADER
   DELIMITER ',';
 
