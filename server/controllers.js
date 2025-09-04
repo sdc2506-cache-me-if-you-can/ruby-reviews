@@ -113,7 +113,7 @@ async function postReview(req, res) {
     )
     WHERE id=$1
     `;
-    await db.query(queryStr, [newReview.rows[0].id]);
+    db.query(queryStr, [newReview.rows[0].id]);
     helpers.calculateMeta(product_id);
     res.sendStatus(201);
   } catch (err) {
