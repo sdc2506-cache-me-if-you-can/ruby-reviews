@@ -83,12 +83,12 @@ async function postReview(req, res) {
     const {product_id, rating, summary, body, recommend, name, email, photos, characteristics} = req.body;
 
     // add new entry to reviews
-    let queryStr = 'INSERT INTO reviews (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($1, $2, $3, $4, $5, $6, $7)';
-    await db.query(queryStr, [product_id, rating, summary, body, recommend, name, email]);
-    const newReview = await db.query(`SELECT *
-      FROM reviews
-      ORDER BY id DESC
-      LIMIT 1`);
+    let queryStr = 'INSERT INTO reviews (product_id, rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id';
+    const newReview = await db.query(queryStr, [product_id, rating, summary, body, recommend, name, email]);
+    // const newReview = await db.query(`SELECT *
+    //   FROM reviews
+    //   ORDER BY id DESC
+    //   LIMIT 1`);
     // add entries to characteristics_reviews
     for (const [key, value] of Object.entries(characteristics)) {
       queryStr = 'INSERT INTO characteristic_reviews (characteristic_id, review_id, value) VALUES ($1, $2, $3)';
