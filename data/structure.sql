@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS product_metareviews (
 
 CREATE INDEX idx_reviews_product_id ON product_metareviews(product_id);
 
+CREATE INDEX idx_photos_review_id ON photos(review_id);
+
 CREATE TABLE IF NOT EXISTS raw_reviews (
   	id INT PRIMARY KEY,
     product_id INT REFERENCES products(id),
