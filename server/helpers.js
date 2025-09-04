@@ -1,57 +1,52 @@
 const db = require('./db');
 
-async function makeMetaTable(product_id) {
-  await db.query('DROP TABLE IF EXISTS product_reviews');
-  let queryStr = `SELECT id AS review_id, rating, recommend
-  INTO product_reviews
-  FROM reviews
-  WHERE reported=false
-    AND product_id=$1`;
-  await db.query(queryStr, [product_id]);
-}
-
-async function getRatingsMeta() {
-    // assuming product_reviews exists
-    let queryStr = `
-      SELECT rating, COUNT(review_id)
-      FROM product_reviews
-      GROUP BY rating
-      ORDER BY rating`;
-    const ratings = await db.query(queryStr);
-    return ratings.rows;
-}
-
-async function getRecommendedMeta() {
-  // assuming product_reviews exists
+async function updateMeta(product_id, rating, recommend) {
+  let queryStr = `
+    UPDATE product_metareviews
+    SET characteristics = chars.characteristics
+    FROM
+    (
+      SELECT product_id, json_agg(json_build_object('name', name, 'id', id, 'value', avg)) as characteristics
+      FROM (SELECT p.id AS product_id, c.name, c.id, AVG(cr.value)
+            FROM characteristics c
+            JOIN products p ON p.id = c.product_id
+            LEFT JOIN characteristic_reviews cr ON cr.characteristic_id = c.id
+            WHERE p.id = $1
+            GROUP BY p.id, c.id, c.name) as subquery
+      GROUP BY subquery.product_id
+      ORDER BY subquery.product_id ASC
+    ) AS chars
+    WHERE chars.product_id = product_metareviews.product_id
+  `;
+  db.query(queryStr, [product_id]);
+  let rating_col;
+  let rec_col;
+  if (rating == 1) {
+    rating_col = 'one_count';
+  } else if (rating == 2) {
+    rating_col = 'two_count';
+  } else if (rating == 3) {
+    rating_col = 'three_count';
+  } else if (rating == 4) {
+    rating_col = 'four_count';
+  } else if (rating == 5) {
+    rating_col = 'five_count';
+  } else {
+    rating_col = '';
+  }
+  if (recommend) {
+    rec_col = 'recommend_count';
+  } else {
+    rec_col = 'no_recommend_count';
+  }
   queryStr = `
-    SELECT recommend::int, COUNT(review_id)
-    FROM product_reviews
-    GROUP BY recommend
-    ORDER BY recommend`;
-  const recommended = await db.query(queryStr);
-  return recommended.rows;
-}
-
-async function getCharacteristicsMeta(product_id) {
-    await db.query('DROP TABLE IF EXISTS product_characteristic_reviews');
-    queryStr = `SELECT characteristics.id, characteristics.product_id, characteristics.name, characteristic_reviews.characteristic_id, characteristic_reviews.value, characteristic_reviews.review_id
-    INTO product_characteristic_reviews
-    FROM characteristics
-    INNER JOIN characteristic_reviews
-    ON characteristics.id=characteristic_reviews.characteristic_id
-    WHERE characteristics.product_id=$1`;
-    await db.query(queryStr, [product_id]);
-    queryStr = `SELECT name, characteristic_id AS id, AVG(value) AS value
-    FROM product_characteristic_reviews
-    GROUP BY characteristic_id, name
-    ORDER BY characteristic_id`;
-    const characteristics = await db.query(queryStr);
-    return characteristics.rows;
+    UPDATE product_metareviews
+    SET ${rating_col} = ${rating_col} + 1, ${rec_col} = ${rec_col} + 1
+    WHERE product_id=$1
+  `;
+  db.query(queryStr, [product_id]);
 }
 
 module.exports = {
-  makeMetaTable,
-  getRatingsMeta,
-  getRecommendedMeta,
-  getCharacteristicsMeta
-} ;
+  updateMeta
+};
