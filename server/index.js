@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 
-app.use('/loaderio-ada5397f8066e6f74bfeca25f781179e.txt', express.static(path.join(__dirname, '/tests', 'loaderio.txt')));
+app.use(`/${process.env.LOADER}`, express.static(path.join(__dirname, '/tests', process.env.LOADER)));
 app.use(express.json());
 app.use('/', router);
 

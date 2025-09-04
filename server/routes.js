@@ -1,3 +1,4 @@
+require('dotenv').config();
 const controllers = require('./controllers');
 const router = require('express').Router();
 const path = require('path');
@@ -6,8 +7,8 @@ router.get('/', async (req, res) => {
   res.send('routes: /reviews, reviews/meta');
 });
 
-router.get('/loaderio-ada5397f8066e6f74bfeca25f781179e.txt', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', '/tests', 'loaderio.txt'));
+router.get(`/${process.env.LOADER}`, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', '/tests', process.env.LOADER));
 });
 router.get('/reviews', controllers.getReviews);
 router.get('/reviews/meta', controllers.getMeta);
