@@ -68,6 +68,12 @@ CREATE INDEX idx_reviews_product_id ON product_metareviews(product_id);
 
 CREATE INDEX idx_photos_review_id ON photos(review_id);
 
+CREATE INDEX idx_characteristics_product_id ON characteristics(product_id);
+
+CREATE INDEX idx_characteristic_reviews_review_id ON characteristic_reviews(review_id);
+
+CREATE INDEX idx_characteristic_reviews_characteristic_id ON characteristic_reviews(characteristic_id);
+
 CREATE TABLE IF NOT EXISTS raw_reviews (
   	id INT PRIMARY KEY,
     product_id INT REFERENCES products(id),

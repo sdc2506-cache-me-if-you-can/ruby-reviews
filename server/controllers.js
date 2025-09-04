@@ -114,7 +114,7 @@ async function postReview(req, res) {
     WHERE id=$1
     `;
     db.query(queryStr, [newReview.rows[0].id]);
-    helpers.calculateMeta(product_id);
+    helpers.updateMeta(product_id, rating, recommend);
     res.sendStatus(201);
   } catch (err) {
     console.error(err);
