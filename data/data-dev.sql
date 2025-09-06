@@ -55,7 +55,8 @@ INSERT INTO product_metareviews
         GROUP BY p.id, c.id, c.name) as subquery
   GROUP BY subquery.product_id
   ORDER BY subquery.product_id ASC
-);
+)
+WHERE product_id = subquery.product_id;
 
 UPDATE product_metareviews
 SET one_count = counts.one_count, two_count = counts.two_count, three_count = counts.three_count, four_count = counts.four_count, five_count = counts.five_count, recommend_count = counts.recommend_count, no_recommend_count = counts.no_recommend_count
